@@ -1,0 +1,143 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# Bellabeat Analysis in R
+### David Jenkins
+### Sep 30, 2021
+
+Bellabeat is a manufacturer of high-tech, health-based products for women.
+We have Urška Sršen who is the co-founder and chief creative officer,  Sando Mur who is also a co-founder and mathematician for the company.
+Along with them we have the marketing analytics team, who is responsible for collecting, analyzing and reporting data that helps with marketing the products.
+Bellabeat offers an app, a wellness tracker, a watch and a water bottle that tracks daily water intake that communicates with the Bellabeat app.
+Bellabeat also offers a premium subscription for personalized guidance on various lifestyle categories.
+ A link to their website can be found here. <https://bellabeat.com>
+ 
+### Loading the packages needed for analysis
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+```
+ 
+### Loading the data for analysis
+```{r}
+read.csv("C:/Users/jenki/OneDrive/Documents/dailyActivity_merged.csv")->daily_activity
+read.csv("C:/Users/jenki/OneDrive/sleepDay_merged.csv")->sleep_data
+read.csv("C:/Users/jenki/OneDrive/weightLogInfo_merged.csv")->weight
+read.csv("C:/Users/jenki/OneDrive/hourlyCalories_merged.csv")->hour_cal
+```
+These datasets are available on Kaggle.com as part of public domain(FitBit Fitness Tracker Data provided by 'Mobius').
+<https://www.kaggle.com/arashnic/fitbit/activity>.
+I loaded the datasets into Excel and checked their validity there. I couldn't find any data for water intake.
+
+## *How can we get users to use the tracker and the app more?
+## *How can we highlight other important areas of the app?
+## *How could these insights help with Bellabeat marketing strategy?
+
+### Let's take a quick look at the data
+```{r}
+head(daily_activity)
+head(sleep_data)
+head(weight)
+head(hour_cal)
+```
+
+### Cleaning the data
+```{r}
+rename(sleep_data, Date="SleepDay")->sleep_data
+rename(daily_activity, Date="ActivityDate")->daily_activity
+rename(hour_cal, Date="ActivityHour")->hour_cal
+weight%>%separate(col=Date, into = c("Date","Time"), sep=" ")->weight
+sleep_data%>%separate(col=Date, into = c("Date", "Time"), sep = " ")->sleep_data
+hour_cal%>%separate(col=Date, into = c("Date", "Time"), sep=" ")->hour_cal
+```
+
+### How many participants do we have for each dataset?
+```{r}
+n_distinct(daily_activity$Id)
+n_distinct(sleep_data$Id)
+n_distinct(weight$Id)
+n_distinct(hour_cal$Id)
+```
+*Daily Activity and Hourly Calorie has 33 participants.
+*Sleep Day data has 24.
+*Weight data has 8. Since weight data has so few participants, we can stress the importance of keeping up with your weight. The dataset will have no use for analysis.
+
+### Merging tables for analysis
+```{r}
+merge(sleep_data, daily_activity, by=c("Id", "Date"))->combined_data
+head(combined_data)
+str(combined_data)
+```
+
+### Summary of combined data
+```{r}
+combined_data%>%
+  select(TotalSteps, TrackerDistance,VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, TotalSleepRecords, TotalTimeInBed, TotalMinutesAsleep, Calories)%>%
+  summary()
+```
+#### *Average total steps among users is 8541.
+#### *Average tracker distance is 6.034.
+#### *Average calories burned is 2398.
+#### *Average hourly calories burned is 97.39.
+#### *Average sleep time is 419.5 minutes or around 6 hours with an average of 1.2 sleep records per user.
+#### *Very active minutes and fairly active minutes are very low, in my opinion. Adding hourly motivators can help with motivating users to get active.
+
+### Comparing total steps and active minutes
+```{r}
+ggplot(data=combined_data, aes(x=TotalSteps, y=VeryActiveMinutes)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "Total Steps vs Very Active Minutes")+theme(plot.title=element_text(hjust=0.5))
+ggplot(data=combined_data, aes(x=TotalSteps, y=FairlyActiveMinutes)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "Total Steps vs Fairly Active Minutes")+theme(plot.title=element_text(hjust=0.5))
+ggplot(data=combined_data, aes(x=TotalSteps, y=LightlyActiveMinutes)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "Total Steps vs Lightly Active Minutes")+theme(plot.title=element_text(hjust=0.5))
+ggplot(data=combined_data, aes(x=TotalSteps, y=SedentaryMinutes)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "Total Steps vs Sedentary Minutes")+theme(plot.title=element_text(hjust=0.5))
+```
+
+#### The more steps you take, the more active you are according to the data.
+
+### Comparing total step and calories burned.
+```{r}
+ggplot(data=combined_data, aes(x=TotalSteps, y=Calories)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "TotalSteps vs Calories")+theme(plot.title=element_text(hjust=0.5))
+```
+
+#### As we can see from this plot, the more steps are taken, the more calories are burned.
+
+### Comparing sleep data.
+```{r}
+ggplot(data=combined_data, aes(x=TotalSteps, y=TotalMinutesAsleep)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "TotalSteps vs Total Minutes Asleep")+theme(plot.title=element_text(hjust=0.5))
+ggplot(data=combined_data, aes(x=TotalSteps, y=TotalTimeInBed)) + geom_point(color="NavyBlue")+geom_smooth(color="Orange")+
+  labs(title = "TotalSteps vs Total Time In Bed")+theme(plot.title=element_text(hjust=0.5))
+
+```
+
+#### There seems to be no real direct correlation between total steps taken through the day and how long you sleep. 
+#### To help people wind down for the day, we can provide relaxation recommendations an hour before their average bedtime.
+
+### Let's compare tracker distance with calories burned.
+```{r}
+ggplot(data=combined_data, aes(x=TrackerDistance, y=Calories))+geom_point(color="NavyBlue")+geom_smooth(color="Orange")+labs(title = "TrackerDistance vs Calories Burned")+theme(plot.title=element_text(hjust=0.5))
+```
+
+#### The longer the distance tracked is, the more calories are burned.
+
+
+
+
+### Recommendations based off analysis
+#### We seem to have little to no data on water intake and weight tracking. I would recommend that the company develop a smart scale that communicates with the app.
+#### I would call it "Feather" to coincide with having a positive attitude about checking your weight on a daily basis. 
+#### We could offer a 10% discount code to new app subscribers for the Spring water bottle or the "Feather" smart scale.
+#### We could also offer a 20% discount code to new app subscribers who want to buy both the Spring water bottle and the "Feather" smart scale together.
+
+
+#### This is my very first analysis I've ever done. I am a complete novice. Any recommendations and constructive criticism is welcome. Please be kind.
+
+
+ 
